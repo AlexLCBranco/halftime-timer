@@ -110,6 +110,7 @@
     position: absolute;
     inset: 0;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     font-size: 22cqmin;
@@ -118,6 +119,14 @@
     letter-spacing: 0.02em;
   }
   .digits.long { font-size: 19cqmin; } /* H:MM:SS */
+  /* the clock time it will expire, under the countdown */
+  .ends {
+    font-size: 6.5cqmin;
+    font-weight: 500;
+    color: var(--accent);
+    letter-spacing: 0;
+  }
+  .ends.idle { opacity: 0.6; }
   .controls { display: flex; gap: 4cqmin; align-items: center; }
   /* short windows: drop the extras so the clock keeps the room */
   @container timer (max-height: 260px) { .timer-desc:empty:not(:focus) { display: none; } }
@@ -147,6 +156,7 @@
   @container timer (max-height: 80px) or (max-width: 80px) {
     .ring-wrap svg { visibility: hidden; }
     .digits { font-size: 28cqmin; }
+    .ends { display: none; }
     .digits.long { font-size: 21cqmin; }
   }
   .btn {
@@ -168,7 +178,7 @@
   .btn.primary { background: var(--accent); color: var(--accent-text); }
 
   .timer.done .ring-progress { stroke: var(--alarm); }
-  .timer.done .digits { color: var(--alarm); animation: blink 0.8s steps(2) infinite; }
+  .timer.done .digits, .timer.done .ends { color: var(--alarm); animation: blink 0.8s steps(2) infinite; }
   .timer.done .btn.primary { background: var(--alarm); }
   @keyframes blink { 50% { opacity: 0.25; } }
 
@@ -271,7 +281,7 @@
             <circle class="ring-track" cx="50" cy="50" r="44"/>
             <circle id="progress" class="ring-progress" cx="50" cy="50" r="44"/>
           </svg>
-          <div id="digits" class="digits">15:00</div>
+          <div id="digits" class="digits"><span id="time">15:00</span><span id="ends" class="ends"></span></div>
         </div>
       </div>
       <div class="controls">
@@ -313,6 +323,7 @@
 (() => {
   const $ = id => document.getElementById(id);
   const timerEl = $('timer'), slot = $('slot'), digits = $('digits'), label = $('label');
+  const timeEl = $('time'), endsEl = $('ends');
   const progress = $('progress'), playBtn = $('playBtn');
   const CIRC = 2 * Math.PI * 44;
   progress.style.strokeDasharray = CIRC;
@@ -363,8 +374,13 @@
     // after time's up it keeps counting into negative time, like the Windows Clock
     const shown = state === 'running' || state === 'done' ? endAt - Date.now() : remaining;
     const left = Math.max(0, shown);
-    digits.textContent = fmt(shown);
-    digits.classList.toggle('long', digits.textContent.length > 6);
+    timeEl.textContent = fmt(shown);
+    digits.classList.toggle('long', timeEl.textContent.length > 6);
+    // running or done: the real end time; otherwise when it would end if started now
+    const live = state === 'running' || state === 'done';
+    const end = live ? endAt : targetAt || Date.now() + remaining;
+    endsEl.textContent = (state === 'done' ? 'ended ' : 'ends ') + new Date(end).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    endsEl.classList.toggle('idle', !live);
     const frac = duration ? left / duration : 0;
     progress.style.strokeDashoffset = CIRC * (1 - frac);
     syncSlider(left);
@@ -589,6 +605,8 @@
   document.addEventListener('pointerdown', unlockAudio, { once: true });
 
   selectTimer(activeId);
+  // while paused or idle, keep the projected end time moving with the clock
+  setInterval(() => { if (state === 'idle' || state === 'paused') render(); }, 1000);
 })();
 </script>
 </body>
