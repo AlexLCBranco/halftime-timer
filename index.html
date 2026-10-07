@@ -174,6 +174,7 @@
     border-radius: 6px;
     padding: 8px 10px;
     font: inherit;
+    color-scheme: dark;
   }
   input[type=number] { width: 72px; }
   input[type=text] { flex: 1; min-width: 120px; }
@@ -256,6 +257,11 @@
       <input id="secIn" type="number" min="0" max="59" value="0"> sec
       <button id="addBtn" class="action">+ Add timer</button>
     </div>
+    <div class="row">
+      or ends at <input id="atIn" type="time" value="17:00">
+      <button id="addAtBtn" class="action">+ Add end time</button>
+    </div>
+    <p class="hint">An end-time timer counts down to that clock time (tomorrow if it has already passed today).</p>
   </section>
 
   <p class="hint">Shortcuts: <b>Space</b> start/pause · <b>R</b> reset</p>
@@ -291,6 +297,17 @@
   let endAt = null;         // timestamp while running
   let state = 'idle';       // idle | running | paused | done
   let tick = null;
+  let targetAt = null;      // fixed clock-time end for "ends at" timers
+
+  const activeTimer = () => allTimers().find(t => t.id === activeId) || DEFAULT_TIMER;
+  // next occurrence of "HH:MM": today, or tomorrow if it has already passed
+  function nextAt(at) {
+    const [h, m] = at.split(':').map(Number);
+    const d = new Date();
+    d.setHours(h, m, 0, 0);
+    if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1);
+    return d.getTime();
+  }
 
   const fmt = ms => {
     if (ms < 0) { const over = Math.floor(-ms / 1000) * 1000; return over ? '-' + fmt(over) : fmt(0); }
@@ -316,9 +333,10 @@
   }
 
   function start() {
-    if (remaining <= 0) return;
     unlockAudio();
-    endAt = Date.now() + remaining;
+    if (targetAt) endAt = targetAt; // pausing doesn't move a clock-time end
+    else if (remaining <= 0) return;
+    else endAt = Date.now() + remaining;
     state = 'running';
     clearInterval(tick);
     tick = setInterval(render, 200);
@@ -333,6 +351,15 @@
   function reset() {
     clearInterval(tick);
     stopAlarm();
+    const t = activeTimer();
+    if (t.at) {
+      // end-time timers run straight away, counting down to the next occurrence
+      targetAt = nextAt(t.at);
+      duration = remaining = targetAt - Date.now();
+      start();
+      return;
+    }
+    targetAt = null;
     remaining = duration;
     state = 'idle';
     render();
@@ -451,8 +478,9 @@
     const t = allTimers().find(t => t.id === id) || DEFAULT_TIMER;
     activeId = t.id;
     store.set('active', activeId);
-    duration = t.ms;
+    duration = t.ms || 0;
     label.textContent = t.name;
+    slider.hidden = !!t.at; // scrubbing makes no sense for a fixed end time
     reset();
     renderList();
   }
@@ -467,7 +495,7 @@
       name.textContent = t.name;
       const len = document.createElement('span');
       len.className = 'len';
-      len.textContent = fmt(t.ms);
+      len.textContent = t.at ? `ends ${t.at}` : fmt(t.ms);
       row.append(name, len);
       if (t.id !== DEFAULT_TIMER.id) {
         const del = document.createElement('button');
@@ -495,6 +523,18 @@
     $('nameIn').value = '';
     selectTimer(t.id);
   };
+  $('addAtBtn').onclick = () => {
+    const at = $('atIn').value;
+    if (!at) return;
+    const t = { id: Date.now().toString(36), name: $('nameIn').value.trim() || `Until ${at}`, at };
+    custom.push(t);
+    store.set('timers', custom);
+    $('nameIn').value = '';
+    unlockAudio();
+    selectTimer(t.id);
+  };
+  // an end-time timer may start on page load, before any click; let the first interaction enable sound
+  document.addEventListener('pointerdown', unlockAudio, { once: true });
 
   selectTimer(activeId);
 })();
