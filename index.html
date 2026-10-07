@@ -305,7 +305,8 @@
       <input id="nameIn" type="text" placeholder="New timer name">
     </div>
     <div class="row">
-      <input id="minIn" type="number" min="0" max="999" value="10"> min
+      <input id="hrIn" type="number" min="0" max="99" value="0"> hr
+      <input id="minIn" type="number" min="0" max="59" value="10"> min
       <input id="secIn" type="number" min="0" max="59" value="0"> sec
       <button id="addBtn" class="action">+ Add timer</button>
     </div>
@@ -583,7 +584,7 @@
     });
   }
   $('addBtn').onclick = () => {
-    const ms = ((+$('minIn').value || 0) * 60 + (+$('secIn').value || 0)) * 1000;
+    const ms = ((+$('hrIn').value || 0) * 3600 + (+$('minIn').value || 0) * 60 +(+$('secIn').value || 0)) * 1000;
     if (ms <= 0) return;
     const t = { id: Date.now().toString(36), name: $('nameIn').value.trim() || `Timer ${custom.length + 1}`, ms };
     custom.push(t);
