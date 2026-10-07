@@ -487,11 +487,11 @@
   }
   async function popOut() {
     if (pipWin) { pipWin.close(); return; }
-    // the browser reopens it where it was last placed; force the size back to 252x324
-    pipWin = await documentPictureInPicture.requestWindow({ width: 252, height: 324 });
-    if (pipWin.innerWidth !== 252 || pipWin.innerHeight !== 324) {
+    // the browser reopens it where it was last placed; force the size back to 240x324
+    pipWin = await documentPictureInPicture.requestWindow({ width: 240, height: 324 });
+    if (pipWin.innerWidth !== 240 || pipWin.innerHeight !== 324) {
       try {
-        pipWin.resizeTo(252 + pipWin.outerWidth - pipWin.innerWidth, 324 + pipWin.outerHeight - pipWin.innerHeight);
+        pipWin.resizeTo(240 + pipWin.outerWidth - pipWin.innerWidth, 324 + pipWin.outerHeight - pipWin.innerHeight);
       } catch {}
     }
     const style = pipWin.document.createElement('style');
