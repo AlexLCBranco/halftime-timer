@@ -25,15 +25,15 @@
 
   /* ---------- Timer widget (moves into the pop-out window) ---------- */
   .timer {
-    container-type: size;
+    container: timer / size;
     width: 100%;
     height: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4cqmin;
-    padding: 5cqmin;
+    gap: 8px;
+    padding: 12px;
     background: var(--bg);
     user-select: none;
   }
@@ -52,7 +52,7 @@
     color: var(--muted);
     text-align: center;
     max-width: 100%;
-    margin-top: -2cqmin;
+    margin-top: -4px;
     outline: none;
     border-radius: 4px;
     padding: 0 4px;
@@ -82,14 +82,16 @@
     cursor: grab;
   }
   .slider:active::-webkit-slider-thumb { cursor: grabbing; }
+  /* the clock always gets the space left over (and at least ~45% of the height), as a square */
   .ring-wrap {
-    position: relative;
     flex: 1 1 0;
-    min-height: 0;
-    aspect-ratio: 1;
+    min-height: 45cqh;
+    width: 100%;
     container-type: size;
-    max-width: 100%;
+    display: grid;
+    place-items: center;
   }
+  .ring { position: relative; width: 100cqmin; height: 100cqmin; }
   .ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
   .ring-track { fill: none; stroke: var(--track); stroke-width: 6; }
   .ring-progress {
@@ -105,14 +107,18 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 20cqmin;
+    font-size: 22cqmin;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     letter-spacing: 0.02em;
   }
+  .digits.long { font-size: 19cqmin; } /* H:MM:SS */
   .controls { display: flex; gap: 4cqmin; align-items: center; }
+  /* short windows: drop the extras so the clock keeps the room */
+  @container timer (max-height: 260px) { .timer-desc:empty:not(:focus) { display: none; } }
+  @container timer (max-height: 220px) { .timer-desc, .timer-label { display: none; } }
   .btn {
-    --size: clamp(42px, 20cqmin, 80px);
+    --size: clamp(36px, 15cqmin, 64px);
     width: var(--size);
     height: var(--size);
     border-radius: 50%;
@@ -227,11 +233,13 @@
       <div id="label" class="timer-label">Halftime</div>
       <div id="desc" class="timer-desc" contenteditable="plaintext-only" spellcheck="false" title="Click to edit"></div>
       <div class="ring-wrap">
-        <svg viewBox="0 0 100 100">
-          <circle class="ring-track" cx="50" cy="50" r="44"/>
-          <circle id="progress" class="ring-progress" cx="50" cy="50" r="44"/>
-        </svg>
-        <div id="digits" class="digits">15:00</div>
+        <div class="ring">
+          <svg viewBox="0 0 100 100">
+            <circle class="ring-track" cx="50" cy="50" r="44"/>
+            <circle id="progress" class="ring-progress" cx="50" cy="50" r="44"/>
+          </svg>
+          <div id="digits" class="digits">15:00</div>
+        </div>
       </div>
       <div class="controls">
         <button id="playBtn" class="btn primary" title="Start / pause (Space)"></button>
@@ -322,6 +330,7 @@
     const shown = state === 'running' || state === 'done' ? endAt - Date.now() : remaining;
     const left = Math.max(0, shown);
     digits.textContent = fmt(shown);
+    digits.classList.toggle('long', digits.textContent.length > 6);
     const frac = duration ? left / duration : 0;
     progress.style.strokeDashoffset = CIRC * (1 - frac);
     syncSlider(left);
