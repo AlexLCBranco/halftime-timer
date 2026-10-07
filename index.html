@@ -487,12 +487,7 @@
   }
   async function popOut() {
     if (pipWin) { pipWin.close(); return; }
-    // opens at the size it had last time (252x324 the first time)
-    pipWin = await documentPictureInPicture.requestWindow(store.get('popSize', { width: 252, height: 324 }));
-    const win = pipWin;
-    win.addEventListener('resize', () => {
-      store.set('popSize', { width: win.innerWidth, height: win.innerHeight });
-    });
+    pipWin = await documentPictureInPicture.requestWindow({ width: 252, height: 324, preferInitialWindowPlacement: true });
     const style = pipWin.document.createElement('style');
     style.textContent = $('timer-styles').textContent;
     pipWin.document.head.append(style);
