@@ -376,7 +376,7 @@
     else if (state === 'done') reset();
     else start();
   }
-  // ---------- drag handle: scrubs time left, from 0 to 15:00 ----------
+  // ---------- drag handle: scrubs time left, from 0 to the full duration ----------
   const slider = $('slider');
   let dragging = false;
   function syncSlider(left) {
@@ -389,6 +389,7 @@
   slider.addEventListener('pointerup', () => dragging = false);
   slider.addEventListener('input', () => {
     remaining = slider.value * 1000;
+    targetAt = null; // dragging an end-time timer turns it into a plain countdown
     stopAlarm();
     if (state === 'running') {
       if (remaining > 0) endAt = Date.now() + remaining;
@@ -443,7 +444,7 @@
   }
   async function popOut() {
     if (pipWin) { pipWin.close(); return; }
-    pipWin = await documentPictureInPicture.requestWindow({ width: 260, height: 300 });
+    pipWin = await documentPictureInPicture.requestWindow({ width: 252, height: 324 });
     const style = pipWin.document.createElement('style');
     style.textContent = $('timer-styles').textContent;
     pipWin.document.head.append(style);
@@ -480,7 +481,6 @@
     store.set('active', activeId);
     duration = t.ms || 0;
     label.textContent = t.name;
-    slider.hidden = !!t.at; // scrubbing makes no sense for a fixed end time
     reset();
     renderList();
   }
