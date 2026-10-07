@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Halftime</title>
+<style id="timer-styles">
+  :root {
+    --bg: #1c1c1c;
+    --panel: #2b2b2b;
+    --track: #3a3a3a;
+    --text: #f2f2f2;
+    --muted: #9a9a9a;
+    --accent: #4cc2ff;
+    --accent-text: #0b0b0b;
+    --alarm: #ff5f5f;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  }
+
+  /* ---------- Timer widget (moves into the pop-out window) ---------- */
+  .timer {
+    container-type: size;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4cqmin;
+    padding: 5cqmin;
+    background: var(--bg);
+    user-select: none;
+  }
+  .timer-label, .timer-desc, .controls { flex-shrink: 0; }
+  .timer-label {
+    font-size: clamp(11px, 6cqmin, 22px);
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .timer-desc {
+    font-size: clamp(10px, 4.5cqmin, 16px);
+    color: var(--muted);
+    text-align: center;
+    max-width: 100%;
+    margin-top: -2cqmin;
+    outline: none;
+    border-radius: 4px;
+    padding: 0 4px;
+    cursor: text;
+    overflow-wrap: anywhere;
+  }
+  .timer-desc:empty::before { content: "Add a description"; opacity: 0.5; }
+  .timer-desc:focus { background: var(--panel); }
+  .slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 85%;
+    height: clamp(4px, 1.6cqmin, 6px);
+    border-radius: 999px;
+    background: linear-gradient(to right, var(--accent) var(--fill, 12%), var(--track) var(--fill, 12%));
+    cursor: pointer;
+    margin: 0;
+    flex-shrink: 0;
+  }
+  .slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: clamp(14px, 6cqmin, 22px);
+    height: clamp(14px, 6cqmin, 22px);
+    border-radius: 50%;
+    background: var(--text);
+    border: 3px solid var(--accent);
+    cursor: grab;
+  }
+  .slider:active::-webkit-slider-thumb { cursor: grabbing; }
+  .ring-wrap {
+    position: relative;
+    flex: 1 1 0;
+    min-height: 0;
+    aspect-ratio: 1;
+    container-type: size;
+    max-width: 100%;
+  }
+  .ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring-track { fill: none; stroke: var(--track); stroke-width: 6; }
+  .ring-progress {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 6;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.25s linear, stroke 0.2s;
+  }
+  .digits {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20cqmin;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+  .controls { display: flex; gap: 4cqmin; align-items: center; }
+  .btn {
+    --size: clamp(42px, 20cqmin, 80px);
+    width: var(--size);
+    height: var(--size);
+    border-radius: 50%;
+    border: none;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    background: var(--panel);
+    color: var(--text);
+    transition: transform 0.1s, filter 0.15s;
+  }
+  .btn:hover { filter: brightness(1.2); }
+  .btn:active { transform: scale(0.94); }
+  .btn svg { width: 55%; height: 55%; fill: currentColor; }
+  .btn.primary { background: var(--accent); color: var(--accent-text); }
+
+  .timer.done .ring-progress { stroke: var(--alarm); }
+  .timer.done .digits { color: var(--alarm); animation: blink 0.8s steps(2) infinite; }
+  .timer.done .btn.primary { background: var(--alarm); }
+  @keyframes blink { 50% { opacity: 0.25; } }
+
+  /* ---------- Main page ---------- */
+  .page {
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 32px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .slot {
+    height: 360px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #333;
+  }
+  .slot.empty {
+    display: grid;
+    place-items: center;
+    color: var(--muted);
+    font-size: 14px;
+    text-align: center;
+    padding: 16px;
+  }
+  .card {
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .card h2 { margin: 0; font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  input {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font: inherit;
+  }
+  input[type=number] { width: 72px; }
+  input[type=text] { flex: 1; min-width: 120px; }
+  .chip, .action {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid #444;
+    border-radius: 999px;
+    padding: 6px 14px;
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .chip:hover, .action:hover { border-color: var(--accent); }
+  .action.primary {
+    background: var(--accent);
+    color: var(--accent-text);
+    border-color: var(--accent);
+    font-weight: 600;
+    padding: 10px 18px;
+  }
+  .list { display: flex; flex-direction: column; gap: 6px; }
+  .item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: var(--bg);
+    border: 1px solid #444;
+    cursor: pointer;
+  }
+  .item:hover { border-color: #666; }
+  .item.active { border-color: var(--accent); }
+  .item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .len { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .item .del {
+    background: none; border: none; color: var(--muted);
+    font-size: 18px; line-height: 1; cursor: pointer; padding: 0 2px;
+  }
+  .item .del:hover { color: var(--alarm); }
+  .hint { font-size: 12px; color: var(--muted); margin: 0; }
+  .warn { color: var(--alarm); }
+</style>
+</head>
+<body>
+<main class="page">
+  <div id="slot" class="slot">
+    <div id="timer" class="timer">
+      <div id="label" class="timer-label">Halftime</div>
+      <div id="desc" class="timer-desc" contenteditable="plaintext-only" spellcheck="false" title="Click to edit"></div>
+      <div class="ring-wrap">
+        <svg viewBox="0 0 100 100">
+          <circle class="ring-track" cx="50" cy="50" r="44"/>
+          <circle id="progress" class="ring-progress" cx="50" cy="50" r="44"/>
+        </svg>
+        <div id="digits" class="digits">15:00</div>
+      </div>
+      <div class="controls">
+        <button id="playBtn" class="btn primary" title="Start / pause (Space)"></button>
+        <button id="resetBtn" class="btn" title="Reset (R)">
+          <svg viewBox="0 0 24 24"><path d="M12 5V2L7 6l5 4V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z"/></svg>
+        </button>
+      </div>
+      <input id="slider" class="slider" type="range" min="0" max="900" step="1" value="900" title="Drag to change the time left">
+    </div>
+  </div>
+
+  <button id="popBtn" class="action primary">Pop out (floating window)</button>
+  <p id="popHint" class="hint">Opens a small window that stays on top of everything. Drag it and resize it however you like.</p>
+
+  <section class="card">
+    <h2>Timers</h2>
+    <div id="timerList" class="list"></div>
+    <div class="row">
+      <input id="nameIn" type="text" placeholder="New timer name">
+    </div>
+    <div class="row">
+      <input id="minIn" type="number" min="0" max="999" value="10"> min
+      <input id="secIn" type="number" min="0" max="59" value="0"> sec
+      <button id="addBtn" class="action">+ Add timer</button>
+    </div>
+  </section>
+
+  <p class="hint">Shortcuts: <b>Space</b> start/pause · <b>R</b> reset</p>
+</main>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const timerEl = $('timer'), slot = $('slot'), digits = $('digits'), label = $('label');
+  const progress = $('progress'), playBtn = $('playBtn');
+  const CIRC = 2 * Math.PI * 44;
+  progress.style.strokeDasharray = CIRC;
+
+  const ICON_PLAY = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+  const ICON_PAUSE = '<svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>';
+  const ICON_STOP = '<svg viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>';
+
+  // ---------- storage (optional) ----------
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+  };
+  // ---------- timers list (Halftime 15:00 is built in, others are yours) ----------
+  const DEFAULT_TIMER = { id: 'halftime', name: 'Halftime', ms: 15 * 60000 };
+  let custom = store.get('timers', []);
+  const allTimers = () => [DEFAULT_TIMER, ...custom];
+  let activeId = store.get('active', DEFAULT_TIMER.id);
+  if (!allTimers().some(t => t.id === activeId)) activeId = DEFAULT_TIMER.id;
+
+  // ---------- timer state ----------
+  let duration = DEFAULT_TIMER.ms; // total ms of the active timer
+  let remaining = duration;        // ms left when paused
+  let endAt = null;         // timestamp while running
+  let state = 'idle';       // idle | running | paused | done
+  let tick = null;
+
+  const fmt = ms => {
+    if (ms < 0) { const over = Math.floor(-ms / 1000) * 1000; return over ? '-' + fmt(over) : fmt(0); }
+    const s = Math.ceil(ms / 1000);
+    const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
+    const pad = n => String(n).padStart(2, '0');
+    return h ? `${h}:${pad(m)}:${pad(sec)}` : `${pad(m)}:${pad(sec)}`;
+  };
+
+  function render() {
+    // after time's up it keeps counting into negative time, like the Windows Clock
+    const shown = state === 'running' || state === 'done' ? endAt - Date.now() : remaining;
+    const left = Math.max(0, shown);
+    digits.textContent = fmt(shown);
+    const frac = duration ? left / duration : 0;
+    progress.style.strokeDashoffset = CIRC * (1 - frac);
+    syncSlider(left);
+    playBtn.innerHTML = state === 'running' ? ICON_PAUSE : state === 'done' ? ICON_STOP : ICON_PLAY;
+    timerEl.classList.toggle('done', state === 'done');
+    if (pipWin) pipWin.document.title = `${fmt(shown)} · ${label.textContent}`;
+    document.title = state === 'idle' ? 'Halftime' : `${fmt(shown)} · ${label.textContent}`;
+    if (state === 'running' && left <= 0) finish();
+  }
+
+  function start() {
+    if (remaining <= 0) return;
+    unlockAudio();
+    endAt = Date.now() + remaining;
+    state = 'running';
+    clearInterval(tick);
+    tick = setInterval(render, 200);
+    render();
+  }
+  function pause() {
+    remaining = Math.max(0, endAt - Date.now());
+    state = 'paused';
+    clearInterval(tick);
+    render();
+  }
+  function reset() {
+    clearInterval(tick);
+    stopAlarm();
+    remaining = duration;
+    state = 'idle';
+    render();
+  }
+  function finish() {
+    // keep ticking so the overtime (-00:05 …) counts up
+    remaining = 0;
+    state = 'done';
+    startAlarm();
+    render();
+  }
+  function toggle() {
+    if (state === 'running') pause();
+    else if (state === 'done') reset();
+    else start();
+  }
+  // ---------- drag handle: scrubs time left, from 0 to 15:00 ----------
+  const slider = $('slider');
+  let dragging = false;
+  function syncSlider(left) {
+    const max = Math.round(duration / 1000);
+    slider.max = max;
+    if (!dragging) slider.value = Math.ceil(left / 1000);
+    slider.style.setProperty('--fill', (max ? slider.value / max * 100 : 0) + '%');
+  }
+  slider.addEventListener('pointerdown', () => dragging = true);
+  slider.addEventListener('pointerup', () => dragging = false);
+  slider.addEventListener('input', () => {
+    remaining = slider.value * 1000;
+    stopAlarm();
+    if (state === 'running') {
+      if (remaining > 0) endAt = Date.now() + remaining;
+      else finish();
+    } else if (state === 'done' || state === 'idle') {
+      clearInterval(tick);
+      state = remaining === duration ? 'idle' : 'paused';
+    }
+    render();
+  });
+  slider.addEventListener('change', () => dragging = false);
+
+  // ---------- description (editable right in the widget) ----------
+  const desc = $('desc');
+  desc.textContent = store.get('desc', '');
+  desc.addEventListener('input', () => store.set('desc', desc.textContent));
+  desc.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); desc.blur(); } });
+
+  // ---------- alarm (generated beeps, no sound file needed) ----------
+  let audio = null, alarmLoop = null, alarmStop = null;
+  function unlockAudio() {
+    if (!audio) audio = new AudioContext();
+    if (audio.state === 'suspended') audio.resume();
+  }
+  function beep(at, freq) {
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.type = 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(0.35, at + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, at + 0.25);
+    o.connect(g).connect(audio.destination);
+    o.start(at); o.stop(at + 0.3);
+  }
+  function startAlarm() {
+    if (!audio) return;
+    const burst = () => { const t = audio.currentTime; beep(t, 880); beep(t + 0.3, 880); beep(t + 0.6, 1175); };
+    burst();
+    alarmLoop = setInterval(burst, 1600);
+    alarmStop = setTimeout(stopAlarm, 30000); // give up after 30 s
+  }
+  function stopAlarm() {
+    clearInterval(alarmLoop); clearTimeout(alarmStop);
+    alarmLoop = alarmStop = null;
+  }
+
+  // ---------- pop-out window (Document Picture-in-Picture) ----------
+  let pipWin = null;
+  const pipSupported = 'documentPictureInPicture' in window;
+  if (!pipSupported) {
+    $('popBtn').disabled = true;
+    $('popHint').innerHTML = '<span class="warn">Pop-out needs Chrome or Edge (version 116+).</span>';
+  }
+  async function popOut() {
+    if (pipWin) { pipWin.close(); return; }
+    pipWin = await documentPictureInPicture.requestWindow({ width: 260, height: 300 });
+    const style = pipWin.document.createElement('style');
+    style.textContent = $('timer-styles').textContent;
+    pipWin.document.head.append(style);
+    pipWin.document.body.append(timerEl);
+    pipWin.document.addEventListener('keydown', onKey);
+    slot.classList.add('empty');
+    slot.textContent = 'Timer is in the floating window. Close it to bring the timer back here.';
+    $('popBtn').textContent = 'Bring back';
+    pipWin.addEventListener('pagehide', () => {
+      slot.classList.remove('empty');
+      slot.textContent = '';
+      slot.append(timerEl);
+      $('popBtn').textContent = 'Pop out (floating window)';
+      pipWin = null;
+    });
+    render();
+  }
+
+  // ---------- wiring ----------
+  function onKey(e) {
+    if ((e.target.tagName === 'INPUT' && e.target.type !== 'range') || e.target.isContentEditable) return;
+    if (e.code === 'Space') { e.preventDefault(); toggle(); }
+    else if (e.key === 'r' || e.key === 'R') reset();
+  }
+  playBtn.onclick = toggle;
+  $('resetBtn').onclick = reset;
+  $('popBtn').onclick = popOut;
+  document.addEventListener('keydown', onKey);
+
+  // ---------- timers list ----------
+  function selectTimer(id) {
+    const t = allTimers().find(t => t.id === id) || DEFAULT_TIMER;
+    activeId = t.id;
+    store.set('active', activeId);
+    duration = t.ms;
+    label.textContent = t.name;
+    reset();
+    renderList();
+  }
+  function renderList() {
+    const box = $('timerList');
+    box.innerHTML = '';
+    allTimers().forEach(t => {
+      const row = document.createElement('div');
+      row.className = 'item' + (t.id === activeId ? ' active' : '');
+      const name = document.createElement('span');
+      name.className = 'name';
+      name.textContent = t.name;
+      const len = document.createElement('span');
+      len.className = 'len';
+      len.textContent = fmt(t.ms);
+      row.append(name, len);
+      if (t.id !== DEFAULT_TIMER.id) {
+        const del = document.createElement('button');
+        del.className = 'del';
+        del.title = 'Delete';
+        del.textContent = '×';
+        del.onclick = e => {
+          e.stopPropagation();
+          custom = custom.filter(c => c.id !== t.id);
+          store.set('timers', custom);
+          if (activeId === t.id) selectTimer(DEFAULT_TIMER.id); else renderList();
+        };
+        row.append(del);
+      }
+      row.onclick = () => { if (t.id !== activeId) selectTimer(t.id); };
+      box.append(row);
+    });
+  }
+  $('addBtn').onclick = () => {
+    const ms = ((+$('minIn').value || 0) * 60 + (+$('secIn').value || 0)) * 1000;
+    if (ms <= 0) return;
+    const t = { id: Date.now().toString(36), name: $('nameIn').value.trim() || `Timer ${custom.length + 1}`, ms };
+    custom.push(t);
+    store.set('timers', custom);
+    $('nameIn').value = '';
+    selectTimer(t.id);
+  };
+
+  selectTimer(activeId);
+})();
+</script>
+</body>
+</html>
