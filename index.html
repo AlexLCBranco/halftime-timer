@@ -487,7 +487,13 @@
   }
   async function popOut() {
     if (pipWin) { pipWin.close(); return; }
-    pipWin = await documentPictureInPicture.requestWindow({ width: 252, height: 324, preferInitialWindowPlacement: true });
+    // the browser reopens it where it was last placed; force the size back to 252x324
+    pipWin = await documentPictureInPicture.requestWindow({ width: 252, height: 324 });
+    if (pipWin.innerWidth !== 252 || pipWin.innerHeight !== 324) {
+      try {
+        pipWin.resizeTo(252 + pipWin.outerWidth - pipWin.innerWidth, 324 + pipWin.outerHeight - pipWin.innerHeight);
+      } catch {}
+    }
     const style = pipWin.document.createElement('style');
     style.textContent = $('timer-styles').textContent;
     pipWin.document.head.append(style);
