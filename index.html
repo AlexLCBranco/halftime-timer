@@ -132,6 +132,8 @@
   @container timer (max-height: 260px) { .timer-desc:empty:not(:focus) { display: none; } }
   @container timer (max-height: 220px) { .timer-desc, .timer-label { display: none; } }
   @container timer (max-height: 170px) and (max-aspect-ratio: 5/4) { .slider { display: none; } }
+  /* set from JS when the slider would make the clock shrink: the slider goes first */
+  .timer.no-slider .slider { display: none; }
   /* wide windows: clock on the left at full height, everything else in a column beside it */
   @container timer (min-aspect-ratio: 5/4) {
     .face {
@@ -502,6 +504,13 @@
     $('popBtn').disabled = true;
     $('popHint').innerHTML = '<span class="warn">Pop-out needs Chrome or Edge (version 116+).</span>';
   }
+  // when the window gets too short for clock + slider, hide the slider before the clock shrinks
+  const face = timerEl.querySelector('.face'), ringWrap = $('ringWrap');
+  function fitSlider() {
+    timerEl.classList.remove('no-slider');
+    if (!pipWin || getComputedStyle(face).display === 'grid') return; // wide layout: slider sits beside the clock
+    if (ringWrap.clientHeight < ringWrap.clientWidth) timerEl.classList.add('no-slider');
+  }
   async function popOut() {
     if (pipWin) { pipWin.close(); return; }
     // the browser reopens it where it was last placed; force the size back to 240x324
@@ -517,6 +526,8 @@
     pipWin.document.head.append(style);
     pipWin.document.body.append(timerEl);
     pipWin.document.addEventListener('keydown', onKey);
+    pipWin.addEventListener('resize', fitSlider);
+    fitSlider();
     slot.classList.add('empty');
     slot.textContent = 'Timer is in the floating window. Close it to bring the timer back here.';
     $('popBtn').textContent = 'Bring back';
@@ -524,6 +535,7 @@
       slot.classList.remove('empty');
       slot.textContent = '';
       slot.append(timerEl);
+      timerEl.classList.remove('no-slider');
       $('popBtn').textContent = 'Pop out (floating window)';
       pipWin = null;
     });
