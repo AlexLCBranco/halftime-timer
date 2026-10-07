@@ -28,14 +28,19 @@
     container: timer / size;
     width: 100%;
     height: 100%;
+    padding: 12px;
+    background: var(--bg);
+    user-select: none;
+    overflow: hidden;
+  }
+  .face {
+    width: 100%;
+    height: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 12px;
-    background: var(--bg);
-    user-select: none;
   }
   .timer-label, .timer-desc, .controls { flex-shrink: 0; }
   .timer-label {
@@ -117,6 +122,33 @@
   /* short windows: drop the extras so the clock keeps the room */
   @container timer (max-height: 260px) { .timer-desc:empty:not(:focus) { display: none; } }
   @container timer (max-height: 220px) { .timer-desc, .timer-label { display: none; } }
+  @container timer (max-height: 170px) and (max-aspect-ratio: 5/4) { .slider { display: none; } }
+  /* wide windows: clock on the left at full height, everything else in a column beside it */
+  @container timer (min-aspect-ratio: 5/4) {
+    .face {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(84px, 38%);
+      grid-template-rows: 1fr repeat(4, auto) 1fr;
+      justify-items: center;
+      column-gap: 12px;
+      row-gap: 8px;
+    }
+    .ring-wrap { grid-column: 1; grid-row: 1 / -1; min-height: 0; height: 100%; }
+    .timer-label { grid-column: 2; grid-row: 2; }
+    .timer-desc { grid-column: 2; grid-row: 3; margin-top: 0; }
+    .controls { grid-column: 2; grid-row: 4; }
+    .slider { grid-column: 2; grid-row: 5; width: 100%; }
+  }
+  /* tiny windows: only the clock (click it to start / pause) */
+  @container timer (max-height: 120px) or (max-width: 120px) {
+    .timer-label, .timer-desc, .controls, .slider { display: none; }
+    .ring-wrap { grid-column: 1 / -1; cursor: pointer; }
+  }
+  @container timer (max-height: 80px) or (max-width: 80px) {
+    .ring-wrap svg { visibility: hidden; }
+    .digits { font-size: 28cqmin; }
+    .digits.long { font-size: 21cqmin; }
+  }
   .btn {
     --size: clamp(36px, 15cqmin, 64px);
     width: var(--size);
@@ -230,9 +262,10 @@
 <main class="page">
   <div id="slot" class="slot">
     <div id="timer" class="timer">
+     <div class="face">
       <div id="label" class="timer-label">Halftime</div>
       <div id="desc" class="timer-desc" contenteditable="plaintext-only" spellcheck="false" title="Click to edit"></div>
-      <div class="ring-wrap">
+      <div id="ringWrap" class="ring-wrap">
         <div class="ring">
           <svg viewBox="0 0 100 100">
             <circle class="ring-track" cx="50" cy="50" r="44"/>
@@ -248,6 +281,7 @@
         </button>
       </div>
       <input id="slider" class="slider" type="range" min="0" max="900" step="1" value="900" title="Drag to change the time left">
+     </div>
     </div>
   </div>
 
@@ -480,6 +514,9 @@
   }
   playBtn.onclick = toggle;
   $('resetBtn').onclick = reset;
+  // when the window is too small for the buttons, the clock itself starts / pauses
+  const controls = timerEl.querySelector('.controls');
+  $('ringWrap').onclick = () => { if (!controls.offsetWidth) toggle(); };
   $('popBtn').onclick = popOut;
   document.addEventListener('keydown', onKey);
 
