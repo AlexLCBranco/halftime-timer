@@ -512,7 +512,8 @@
       } catch {}
     }
     const style = pipWin.document.createElement('style');
-    style.textContent = $('timer-styles').textContent;
+    // the floating window skips the name and description; they stay on the page
+    style.textContent = $('timer-styles').textContent + '\n.timer-label, .timer-desc { display: none !important; }';
     pipWin.document.head.append(style);
     pipWin.document.body.append(timerEl);
     pipWin.document.addEventListener('keydown', onKey);
