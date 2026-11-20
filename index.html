@@ -266,6 +266,9 @@
     font-size: 18px; line-height: 1; cursor: pointer; padding: 0 2px;
   }
   .item .del:hover { color: var(--alarm); }
+  /* after a link opens a timer: the pop-out needs one click, so point at it */
+  .action.primary.attn { animation: attn 1.2s ease-in-out infinite; }
+  @keyframes attn { 50% { box-shadow: 0 0 0 6px rgba(76, 194, 255, 0.35); } }
   .hint { font-size: 12px; color: var(--muted); margin: 0; }
   .warn { color: var(--alarm); }
 </style>
@@ -354,6 +357,7 @@
   let state = 'idle';       // idle | running | paused | done
   let tick = null;
   let targetAt = null;      // fixed clock-time end for "ends at" timers
+  let expired = false;      // a linked end time that had already passed: shown at 0, never negative
 
   const activeTimer = () => allTimers().find(t => t.id === activeId) || DEFAULT_TIMER;
   // next occurrence of "HH:MM": today, or tomorrow if it has already passed
@@ -382,7 +386,9 @@
     // running or done: the real end time; otherwise when it would end if started now
     const live = state === 'running' || state === 'done';
     const end = live ? endAt : targetAt || Date.now() + remaining;
-    endsEl.textContent = (state === 'done' ? 'ended ' : 'ends ') + new Date(end).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    endsEl.textContent = expired
+      ? 'already ended ' + new Date(targetAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+      : (state === 'done' ? 'ended ' : 'ends ') + new Date(end).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     endsEl.classList.toggle('idle', !live);
     const frac = duration ? left / duration : 0;
     progress.style.strokeDashoffset = CIRC * (1 - frac);
@@ -396,6 +402,7 @@
 
   function start() {
     unlockAudio();
+    if (expired) return;
     if (targetAt) endAt = targetAt; // pausing doesn't move a clock-time end
     else if (remaining <= 0) return;
     else endAt = Date.now() + remaining;
@@ -414,6 +421,21 @@
     clearInterval(tick);
     stopAlarm();
     const t = activeTimer();
+    expired = false;
+    if (t.end) {
+      // linked timers count down to one exact moment; once it has passed they stay at 0
+      targetAt = t.end;
+      if (t.end <= Date.now()) {
+        expired = true;
+        duration = remaining = 0;
+        state = 'idle';
+        render();
+        return;
+      }
+      duration = remaining = t.end - Date.now();
+      start();
+      return;
+    }
     if (t.at) {
       // end-time timers run straight away, counting down to the next occurrence
       targetAt = nextAt(t.at);
@@ -452,6 +474,7 @@
   slider.addEventListener('input', () => {
     remaining = slider.value * 1000;
     targetAt = null; // dragging an end-time timer turns it into a plain countdown
+    expired = false;
     stopAlarm();
     if (state === 'running') {
       if (remaining > 0) endAt = Date.now() + remaining;
@@ -512,6 +535,7 @@
     if (ringWrap.clientHeight < ringWrap.clientWidth) timerEl.classList.add('no-slider');
   }
   async function popOut() {
+    $('popBtn').classList.remove('attn');
     if (pipWin) { pipWin.close(); return; }
     // the browser reopens it where it was last placed; force the size back to 240x324
     pipWin = await documentPictureInPicture.requestWindow({ width: 240, height: 324 });
@@ -577,7 +601,7 @@
       name.textContent = t.name;
       const len = document.createElement('span');
       len.className = 'len';
-      len.textContent = t.at ? `ends ${t.at}` : fmt(t.ms);
+      len.textContent = t.end ? 'ends ' + endLabel(t.end) : t.at ? `ends ${t.at}` : fmt(t.ms);
       row.append(name, len);
       if (t.id !== DEFAULT_TIMER.id) {
         const del = document.createElement('button');
@@ -618,7 +642,33 @@
   // an end-time timer may start on page load, before any click; let the first interaction enable sound
   document.addEventListener('pointerdown', unlockAudio, { once: true });
 
-  selectTimer(activeId);
+  // "Mon 20:00", or just "20:00" when it's today
+  function endLabel(ms) {
+    const d = new Date(ms), time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return d.toDateString() === new Date().toDateString() ? time : d.toLocaleDateString([], { weekday: 'short' }) + ' ' + time;
+  }
+
+  // ---------- open a countdown from a link: ?end=<ISO date-time with offset>&name=<text> ----------
+  function openFromLink() {
+    const q = new URLSearchParams(location.search);
+    if (!q.has('end')) return false;
+    const end = Date.parse(q.get('end'));
+    if (Number.isNaN(end)) return false;
+    const name = (q.get('name') || '').trim() || 'Until ' + endLabel(end);
+    let t = custom.find(c => c.end === end && c.name === name); // the same link twice is the same timer
+    if (!t) {
+      t = { id: Date.now().toString(36), name, end };
+      custom.push(t);
+      store.set('timers', custom);
+    }
+    // drop the query so a reload doesn't override what's picked later
+    history.replaceState(null, '', location.pathname + location.hash);
+    selectTimer(t.id);
+    if (pipSupported) $('popBtn').classList.add('attn');
+    return true;
+  }
+
+  if (!openFromLink()) selectTimer(activeId);
   // while paused or idle, keep the projected end time moving with the clock
   setInterval(() => { if (state === 'idle' || state === 'paused') render(); }, 1000);
 })();

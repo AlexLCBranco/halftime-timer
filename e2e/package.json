@@ -1,0 +1,12 @@
+{
+  "name": "halftime-timer-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:local": "node -e \"process.env.BASE_URL='local';require('child_process').execSync('npx playwright test',{stdio:'inherit',env:process.env})\""
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1"
+  }
+}
