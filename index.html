@@ -271,6 +271,17 @@
   @keyframes attn { 50% { box-shadow: 0 0 0 6px rgba(76, 194, 255, 0.35); } }
   .hint { font-size: 12px; color: var(--muted); margin: 0; }
   .warn { color: var(--alarm); }
+  /* the site's version, small in the corner (never in the pop-out); room is kept for it below the page */
+  .page { padding-bottom: 40px; }
+  .site-version {
+    position: fixed;
+    right: 8px;
+    bottom: 6px;
+    font-size: 11px;
+    color: var(--muted);
+    opacity: 0.7;
+    font-variant-numeric: tabular-nums;
+  }
 </style>
 </head>
 <body>
@@ -324,10 +335,19 @@
 
   <p class="hint">Shortcuts: <b>Space</b> start/pause · <b>R</b> reset</p>
 </main>
+<!-- filled in by scripts/build.mjs -->
+<div id="siteVersion" class="site-version" data-version="__APP_VERSION__" data-commit="__APP_COMMIT__" data-built="__BUILT_AT__">v__APP_VERSION__</div>
 
 <script>
 (() => {
   const $ = id => document.getElementById(id);
+
+  // ---------- version label tooltip: commit and build time (local time) ----------
+  {
+    const v = $('siteVersion'), t = Date.parse(v.dataset.built);
+    const when = Number.isNaN(t) ? '' : ', built ' + new Date(t).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+    v.title = `Version ${v.dataset.version} · commit ${v.dataset.commit}${when}`;
+  }
   const timerEl = $('timer'), slot = $('slot'), digits = $('digits'), label = $('label');
   const timeEl = $('time'), endsEl = $('ends');
   const progress = $('progress'), playBtn = $('playBtn');
