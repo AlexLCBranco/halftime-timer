@@ -11,7 +11,8 @@ test('the version label matches /version.json', async ({ page, request }) => {
   await page.goto('/');
   const label = page.locator('#siteVersion');
   await expect(label).toHaveText(`v${info.version}`);
-  expect(await label.getAttribute('title')).toMatch(new RegExp('^' + RegExp.escape(`Version ${info.version} · commit ${info.commit}, built `)));
+  const title = await label.getAttribute('title');
+  expect(title.startsWith(`Version ${info.version} · commit ${info.commit}, built `), title).toBe(true);
   // small, in the bottom-right corner
   const box = await label.boundingBox(), vp = page.viewportSize();
   expect(vp.width - (box.x + box.width)).toBeLessThan(20);
