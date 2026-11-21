@@ -9,7 +9,7 @@ function isoWithOffset(ms) {
   return { iso: shifted.toISOString().slice(0, 19) + '+02:00', at: t.getTime() };
 }
 const link = (end, name) => `/?end=${encodeURIComponent(end)}&name=${encodeURIComponent(name)}`;
-const items = page => page.locator('#timerList .item');
+const items = page => page.locator('#timerList .fk-chip-btn');
 
 test('a link adds the named countdown and shows it at once', async ({ page }) => {
   const name = `e2e BOS @ DET ${Date.now()}`;
@@ -17,7 +17,7 @@ test('a link adds the named countdown and shows it at once', async ({ page }) =>
   await page.goto(link(iso, name));
 
   await expect(page.locator('#label')).toHaveText(name);
-  await expect(items(page).filter({ hasText: name })).toHaveClass(/active/);
+  await expect(items(page).filter({ hasText: name })).toHaveClass(/fk-chip-on/);
   await expect(items(page).filter({ hasText: 'Halftime' })).toHaveCount(1); // existing timers stay
   // counting down towards the linked moment (±1 min of rounding)
   const shown = await page.locator('#time').textContent();
@@ -25,7 +25,10 @@ test('a link adds the named countdown and shows it at once', async ({ page }) =>
   expect(Math.abs(h * 60 + m - (at - Date.now()) / 60000)).toBeLessThan(2);
   const first = shown;
   await expect(page.locator('#time')).not.toHaveText(first, { timeout: 3000 }); // it's running
-  await expect(page).toHaveURL(/\/$/); // the query is dropped after use
+  await expect(page).toHaveURL(/\?end=[^&]+&name=/); // HT-3: the timer on screen stays in the address
+  await page.reload(); // so a reload shows it again, still as one timer
+  await expect(page.locator('#label')).toHaveText(name);
+  await expect(items(page).filter({ hasText: name })).toHaveCount(1);
 });
 
 test('after a link, the Pop out button is highlighted until clicked once', async ({ page }) => {

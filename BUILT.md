@@ -2,6 +2,11 @@
 
 Shipped work only, newest first (rules: CLAUDE.md, "Feature backlog, built list and ideas").
 
+## 2026-11-21
+
+- HT-3 — Shared layout: pinned header menu, chips instead of dropdowns (v1.1.0)
+  A header now stays at the top (back / forward, "Timers › Halftime" breadcrumb, "Go anywhere" search on Ctrl+K, the Timers tab), your timers are "What" chips above the clock, and the address always says which timer is on screen.
+
 ## 2026-11-19
 
 - Version number in the bottom-right corner

@@ -6,21 +6,32 @@
 <title>Halftime</title>
 <style id="timer-styles">
   :root {
-    --bg: #1c1c1c;
-    --panel: #2b2b2b;
-    --track: #3a3a3a;
-    --text: #f2f2f2;
-    --muted: #9a9a9a;
-    --accent: #4cc2ff;
-    --accent-text: #0b0b0b;
+    /* the shared look of the owner's apps (footykit's colours, NAV_PATTERN.md) */
+    --fk-bg: #0f1115;
+    --fk-surface: #171a21;
+    --fk-surface-2: #1f232c;
+    --fk-border: #2a2f3a;
+    --fk-text: #e6e8ec;
+    --fk-muted: #8b93a3;
+    --fk-accent: #4ea1ff;
+    --fk-link: #7cb8ff;
+    --bg: var(--fk-bg);
+    --panel: var(--fk-surface);
+    --track: var(--fk-border);
+    --text: var(--fk-text);
+    --muted: var(--fk-muted);
+    --accent: var(--fk-accent);
+    --accent-text: #06121f;
     --alarm: #ff5f5f;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; }
+  /* the page is as tall as its content (a fixed-height body would let the pinned header scroll away) */
+  html { height: 100%; }
+  body { margin: 0; min-height: 100%; }
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   }
 
   /* ---------- Timer widget (moves into the pop-out window) ---------- */
@@ -188,7 +199,7 @@
   .page {
     max-width: 420px;
     margin: 0 auto;
-    padding: 32px 16px;
+    padding: 12px 16px 32px;
     display: flex;
     flex-direction: column;
     gap: 20px;
@@ -197,7 +208,7 @@
     height: 360px;
     border-radius: 12px;
     overflow: hidden;
-    border: 1px solid #333;
+    border: 1px solid var(--fk-border);
   }
   .slot.empty {
     display: grid;
@@ -220,7 +231,7 @@
   input {
     background: var(--bg);
     color: var(--text);
-    border: 1px solid #444;
+    border: 1px solid var(--fk-border);
     border-radius: 6px;
     padding: 8px 10px;
     font: inherit;
@@ -228,17 +239,17 @@
   }
   input[type=number] { width: 72px; }
   input[type=text] { flex: 1; min-width: 120px; }
-  .chip, .action {
+  .action {
     background: var(--bg);
     color: var(--text);
-    border: 1px solid #444;
+    border: 1px solid var(--fk-border);
     border-radius: 999px;
     padding: 6px 14px;
     font: inherit;
     font-size: 14px;
     cursor: pointer;
   }
-  .chip:hover, .action:hover { border-color: var(--accent); }
+  .action:hover { border-color: var(--accent); }
   .action.primary {
     background: var(--accent);
     color: var(--accent-text);
@@ -246,29 +257,9 @@
     font-weight: 600;
     padding: 10px 18px;
   }
-  .list { display: flex; flex-direction: column; gap: 6px; }
-  .item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    border-radius: 8px;
-    background: var(--bg);
-    border: 1px solid #444;
-    cursor: pointer;
-  }
-  .item:hover { border-color: #666; }
-  .item.active { border-color: var(--accent); }
-  .item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .item .len { color: var(--muted); font-variant-numeric: tabular-nums; }
-  .item .del {
-    background: none; border: none; color: var(--muted);
-    font-size: 18px; line-height: 1; cursor: pointer; padding: 0 2px;
-  }
-  .item .del:hover { color: var(--alarm); }
   /* after a link opens a timer: the pop-out needs one click, so point at it */
   .action.primary.attn { animation: attn 1.2s ease-in-out infinite; }
-  @keyframes attn { 50% { box-shadow: 0 0 0 6px rgba(76, 194, 255, 0.35); } }
+  @keyframes attn { 50% { box-shadow: 0 0 0 6px rgb(78 161 255 / 0.35); } }
   .hint { font-size: 12px; color: var(--muted); margin: 0; }
   .warn { color: var(--alarm); }
   /* the site's version, small in the corner (never in the pop-out); room is kept for it below the page */
@@ -283,9 +274,293 @@
     font-variant-numeric: tabular-nums;
   }
 </style>
+<style id="nav-styles">
+  /* HT-3: the shared layout (backlogkit's NAV_PATTERN.md). Header, chips and search copy footykit's FK-65 styles
+     (src/components/nav.css there), so the apps look like one site. Not copied into the pop-out window. */
+
+  /* ---------- the pinned header: one fixed height, so nothing under it ever jumps ---------- */
+  .fk-header {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    height: var(--fk-header-h, 92px);
+    padding: 6px 16px 0;
+    background: var(--fk-bg);
+    border-bottom: 1px solid var(--fk-border);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 14px;
+  }
+  .fk-header button, .fk-go-shade button, .fk-prows button { font: inherit; color: inherit; }
+  .fk-head-row { display: flex; align-items: center; gap: 12px; height: 36px; min-width: 0; }
+  .fk-head-end { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; }
+  .fk-hist {
+    display: inline-flex;
+    height: 32px;
+    border: 1px solid var(--fk-border);
+    border-radius: 8px;
+    overflow: hidden;
+    flex: none;
+  }
+  .fk-hist-btn {
+    width: 30px;
+    border: 0;
+    background: var(--fk-surface-2);
+    color: var(--fk-text);
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .fk-hist-btn + .fk-hist-btn { border-left: 1px solid var(--fk-border); }
+  .fk-hist-btn:hover:not(:disabled) { color: var(--fk-accent); }
+  .fk-hist-btn:disabled { color: var(--fk-muted); opacity: 0.4; cursor: default; }
+  .fk-crumbs { display: flex; align-items: center; min-width: 0; white-space: nowrap; }
+  .fk-crumb { position: relative; display: inline-flex; align-items: center; min-width: 0; }
+  .fk-crumb:first-child .fk-crumb-sep { display: none; }
+  .fk-crumb-sep { color: var(--fk-muted); padding: 0 4px; }
+  .fk-crumb-btn {
+    border: 1px solid transparent;
+    background: none;
+    border-radius: 6px;
+    padding: 4px 6px;
+    font-size: 15px;
+    color: var(--fk-link) !important;
+    cursor: pointer;
+    min-width: 0;
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background-color 0.12s, border-color 0.12s;
+  }
+  .fk-crumb-btn:hover:not(:disabled) { border-color: var(--fk-border); background: var(--fk-surface); }
+  .fk-crumb-last { color: var(--fk-text) !important; font-weight: 600; }
+  .fk-crumb-btn:disabled { cursor: default; color: var(--fk-text) !important; }
+  .fk-crumb-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 12px;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    min-width: 160px;
+    max-width: min(360px, calc(100vw - 56px));
+    max-height: 60vh;
+    overflow-y: auto;
+    padding: 4px;
+    background: var(--fk-surface);
+    border: 1px solid var(--fk-border);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.45);
+  }
+  .fk-crumb-item {
+    text-align: left;
+    border: 0;
+    background: none;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .fk-crumb-item:hover { background: var(--fk-surface-2); }
+  .fk-crumb-item-on { color: var(--fk-accent) !important; font-weight: 600; }
+  .fk-where { display: flex; gap: 4px; height: 38px; }
+  .fk-where-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0 14px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: none;
+    color: var(--fk-muted) !important;
+    cursor: pointer;
+    font-size: 15px;
+    transition: color 0.12s, border-color 0.12s;
+  }
+  .fk-where-tab:hover { color: var(--fk-text) !important; }
+  .fk-where-on { color: var(--fk-text) !important; border-bottom-color: var(--fk-accent); font-weight: 600; }
+  .fk-where-on svg { color: var(--fk-accent); }
+  .fk-go-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 32px;
+    padding: 0 8px 0 10px;
+    border: 1px solid var(--fk-border);
+    border-radius: 8px;
+    background: var(--fk-surface);
+    color: var(--fk-muted) !important;
+    cursor: pointer;
+    min-width: 200px;
+  }
+  .fk-go-btn:hover { border-color: var(--fk-accent); }
+  .fk-go-kbd {
+    margin-left: auto;
+    font: inherit;
+    font-size: 11px;
+    border: 1px solid var(--fk-border);
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+  .fk-go-shade {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgb(0 0 0 / 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 12vh;
+    font-size: 14px;
+  }
+  .fk-go-shade[hidden] { display: none; }
+  .fk-go {
+    width: min(560px, calc(100vw - 32px));
+    background: var(--fk-surface);
+    border: 1px solid var(--fk-border);
+    border-radius: 10px;
+    box-shadow: 0 16px 48px rgb(0 0 0 / 0.6);
+    overflow: hidden;
+  }
+  .fk-go .fk-go-input {
+    display: block;
+    width: 100%;
+    height: 46px;
+    padding: 0 14px;
+    border: 0;
+    border-bottom: 1px solid var(--fk-border);
+    border-radius: 0;
+    background: transparent;
+    color: var(--fk-text);
+    font: inherit;
+    font-size: 16px;
+    outline: none;
+  }
+  .fk-go-list { max-height: 50vh; overflow-y: auto; padding: 4px; }
+  .fk-go-item { display: flex; justify-content: space-between; gap: 12px; padding: 8px 10px; border-radius: 6px; cursor: pointer; }
+  .fk-go-on { background: rgb(78 161 255 / 0.16); }
+  .fk-go-none { padding: 10px; }
+  .fk-muted { color: var(--fk-muted); }
+
+  /* ---------- the page row (What chips), scrolling away with the page ---------- */
+  .fk-prows { display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+  .fk-prow { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+  .fk-prow-label {
+    font-size: 12px;
+    line-height: 30px;
+    color: var(--fk-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    flex: none;
+  }
+  .fk-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+  .fk-chip { display: inline-flex; align-items: center; gap: 2px; min-width: 0; max-width: 100%; }
+  .fk-chip-btn {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 30px;
+    min-width: 0;
+    padding: 0 11px;
+    border: 1px solid var(--fk-border);
+    border-radius: 15px;
+    background: var(--fk-surface);
+    color: var(--fk-muted) !important;
+    cursor: pointer;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    transition: background-color 0.12s, color 0.12s, border-color 0.12s;
+  }
+  .fk-chip-text { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  /* each chip as wide as its bold text, so picking one never shifts its neighbours */
+  .fk-chip-btn::after {
+    content: attr(data-text);
+    font-weight: 600;
+    height: 0;
+    max-width: 100%;
+    overflow: hidden;
+    visibility: hidden;
+  }
+  .fk-chip-btn:hover:not(.fk-chip-on) { color: var(--fk-text) !important; border-color: var(--fk-muted); }
+  .fk-chip-on { background: var(--fk-accent); border-color: var(--fk-accent); color: #06121f !important; font-weight: 600; }
+  .fk-chip-del {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: var(--fk-muted) !important;
+    font-size: 16px !important;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color 0.12s, color 0.12s;
+  }
+  .fk-chip-del:hover { color: var(--alarm) !important; background: var(--fk-surface-2); }
+
+  /* ---------- narrow windows (phones): the place still visible, nothing in a hamburger ---------- */
+  @media (max-width: 700px) {
+    .fk-header { --fk-header-h: 99px; gap: 4px; }
+    /* the list of timers opens under the whole row, so a long name never runs off the screen */
+    .fk-head-row { gap: 6px; position: relative; }
+    .fk-crumb { position: static; }
+    .fk-where { height: 52px; gap: 0; }
+    .fk-where-tab { flex: 0 1 96px; flex-direction: column; justify-content: center; gap: 2px; padding: 0 2px; font-size: 11px; }
+    /* the breadcrumb's last two parts */
+    .fk-crumb:not(:nth-last-child(-n + 2)) { display: none; }
+    .fk-crumb:nth-last-child(2) .fk-crumb-sep { display: none; }
+    .fk-crumb-btn { max-width: 170px; font-size: 14px; }
+    .fk-go-btn { min-width: 0; width: 32px; padding: 0; justify-content: center; }
+    .fk-go-text, .fk-go-kbd { display: none; }
+  }
+</style>
 </head>
 <body>
+<!-- HT-3: the pinned header (NAV_PATTERN.md): back / forward, the breadcrumb, "Go anywhere", and the app's one place -->
+<header class="fk-header" data-testid="top-bar">
+  <div class="fk-head-row">
+    <span class="fk-hist" role="group" aria-label="Page history" data-testid="page-history">
+      <button id="backBtn" type="button" class="fk-hist-btn" aria-label="Back">←</button>
+      <button id="fwdBtn" type="button" class="fk-hist-btn" aria-label="Forward">→</button>
+    </span>
+    <nav id="crumbs" class="fk-crumbs" aria-label="You are here" data-testid="breadcrumb"></nav>
+    <span class="fk-head-end">
+      <button id="goBtn" type="button" class="fk-go-btn" aria-label="Go anywhere (Ctrl+K)" title="Go anywhere: type a timer's name (Ctrl+K)" data-testid="go-anywhere">
+        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><circle cx="6.8" cy="6.8" r="4.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M10.3 10.3l3.9 3.9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <span class="fk-go-text">Go anywhere</span>
+        <kbd class="fk-go-kbd">Ctrl K</kbd>
+      </button>
+    </span>
+  </div>
+  <nav class="fk-where" aria-label="Places" data-testid="where-tabs">
+    <button id="whereTimers" type="button" class="fk-where-tab fk-where-on" aria-current="page" title="Your timers" data-testid="where-timers">
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="8" cy="9" r="5.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 6v3l2 1.5M6.3 1.8h3.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <span class="fk-where-label">Timers</span>
+    </button>
+  </nav>
+</header>
+<div id="goShade" class="fk-go-shade" hidden>
+  <div class="fk-go" role="dialog" aria-label="Go anywhere" data-testid="go-dialog">
+    <input id="goInput" type="text" class="fk-go-input" placeholder="Type a timer's name…" spellcheck="false" autocomplete="off"
+      role="combobox" aria-expanded="true" aria-controls="goList" aria-label="Where to go" data-testid="go-input">
+    <div id="goList" class="fk-go-list" role="listbox" data-testid="go-list"></div>
+  </div>
+</div>
 <main class="page">
+  <!-- What: the timer being shown, every one a chip -->
+  <div class="fk-prows">
+    <div class="fk-prow">
+      <span class="fk-prow-label">What</span>
+      <div id="timerList" class="fk-chips" role="group" aria-label="Timers" data-testid="what-chips"></div>
+    </div>
+  </div>
   <div id="slot" class="slot">
     <div id="timer" class="timer">
      <div class="face">
@@ -301,8 +576,8 @@
         </div>
       </div>
       <div class="controls">
-        <button id="playBtn" class="btn primary" title="Start / pause (Space)"></button>
-        <button id="resetBtn" class="btn" title="Reset (R)">
+        <button id="playBtn" class="btn primary" title="Start / pause (Space)" aria-label="Start or pause"></button>
+        <button id="resetBtn" class="btn" title="Reset (R)" aria-label="Reset">
           <svg viewBox="0 0 24 24"><path d="M12 5V2L7 6l5 4V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z"/></svg>
         </button>
       </div>
@@ -315,8 +590,7 @@
   <p id="popHint" class="hint">Opens a small window that stays on top of everything. Drag it and resize it however you like.</p>
 
   <section class="card">
-    <h2>Timers</h2>
-    <div id="timerList" class="list"></div>
+    <h2>Add a timer</h2>
     <div class="row">
       <input id="nameIn" type="text" placeholder="New timer name">
     </div>
@@ -566,7 +840,7 @@
     }
     const style = pipWin.document.createElement('style');
     // the floating window skips the name and description; they stay on the page
-    style.textContent = $('timer-styles').textContent + '\n.timer-label, .timer-desc { display: none !important; }';
+    style.textContent = $('timer-styles').textContent + '\nhtml, body { height: 100%; }\n.timer-label, .timer-desc { display: none !important; }';
     pipWin.document.head.append(style);
     pipWin.document.body.append(timerEl);
     pipWin.document.addEventListener('keydown', onKey);
@@ -589,6 +863,7 @@
   // ---------- wiring ----------
   function onKey(e) {
     if ((e.target.tagName === 'INPUT' && e.target.type !== 'range') || e.target.isContentEditable) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return; // Ctrl+K, Ctrl+R … are not the timer's keys
     if (e.code === 'Space') { e.preventDefault(); toggle(); }
     else if (e.key === 'r' || e.key === 'R') reset();
   }
@@ -600,7 +875,10 @@
   $('popBtn').onclick = popOut;
   document.addEventListener('keydown', onKey);
 
-  // ---------- timers list ----------
+  // ---------- timers: showing one ----------
+  const el = (tag, props, ...kids) => { const n = Object.assign(document.createElement(tag), props); n.append(...kids); return n; };
+  // "15:00", or when it ends
+  const lengthOf = t => t.end ? 'ends ' + endLabel(t.end) : t.at ? `ends ${t.at}` : fmt(t.ms);
   function selectTimer(id) {
     const t = allTimers().find(t => t.id === id) || DEFAULT_TIMER;
     activeId = t.id;
@@ -609,35 +887,31 @@
     label.textContent = t.name;
     reset();
     renderList();
+    renderHeader();
   }
+  // What: every timer is a chip, one click away; your own timers have a × to delete them
   function renderList() {
     const box = $('timerList');
     box.innerHTML = '';
     allTimers().forEach(t => {
-      const row = document.createElement('div');
-      row.className = 'item' + (t.id === activeId ? ' active' : '');
-      const name = document.createElement('span');
-      name.className = 'name';
-      name.textContent = t.name;
-      const len = document.createElement('span');
-      len.className = 'len';
-      len.textContent = t.end ? 'ends ' + endLabel(t.end) : t.at ? `ends ${t.at}` : fmt(t.ms);
-      row.append(name, len);
+      const on = t.id === activeId, text = `${t.name} · ${lengthOf(t)}`;
+      const chip = el('button', { type: 'button', className: 'fk-chip-btn' + (on ? ' fk-chip-on' : ''), title: text }, el('span', { className: 'fk-chip-text', textContent: text }));
+      chip.dataset.text = text;
+      chip.dataset.testid = 'what-chip';
+      chip.setAttribute('aria-pressed', on);
+      chip.onclick = () => { if (t.id !== activeId) show(t.id, 'push'); };
+      const wrap = el('span', { className: 'fk-chip' }, chip);
       if (t.id !== DEFAULT_TIMER.id) {
-        const del = document.createElement('button');
-        del.className = 'del';
-        del.title = 'Delete';
-        del.textContent = '×';
-        del.onclick = e => {
-          e.stopPropagation();
+        const del = el('button', { type: 'button', className: 'fk-chip-del', title: `Delete ${t.name}`, textContent: '×' });
+        del.setAttribute('aria-label', `Delete ${t.name}`);
+        del.onclick = () => {
           custom = custom.filter(c => c.id !== t.id);
           store.set('timers', custom);
-          if (activeId === t.id) selectTimer(DEFAULT_TIMER.id); else renderList();
+          if (activeId === t.id) show(DEFAULT_TIMER.id, 'replace'); else { renderList(); renderHeader(); }
         };
-        row.append(del);
+        wrap.append(del);
       }
-      row.onclick = () => { if (t.id !== activeId) selectTimer(t.id); };
-      box.append(row);
+      box.append(wrap);
     });
   }
   $('addBtn').onclick = () => {
@@ -647,7 +921,7 @@
     custom.push(t);
     store.set('timers', custom);
     $('nameIn').value = '';
-    selectTimer(t.id);
+    show(t.id, 'push');
   };
   $('addAtBtn').onclick = () => {
     const at = $('atIn').value;
@@ -657,7 +931,7 @@
     store.set('timers', custom);
     $('nameIn').value = '';
     unlockAudio();
-    selectTimer(t.id);
+    show(t.id, 'push');
   };
   // an end-time timer may start on page load, before any click; let the first interaction enable sound
   document.addEventListener('pointerdown', unlockAudio, { once: true });
@@ -668,27 +942,155 @@
     return d.toDateString() === new Date().toDateString() ? time : d.toLocaleDateString([], { weekday: 'short' }) + ' ' + time;
   }
 
-  // ---------- open a countdown from a link: ?end=<ISO date-time with offset>&name=<text> ----------
-  function openFromLink() {
-    const q = new URLSearchParams(location.search);
-    if (!q.has('end')) return false;
-    const end = Date.parse(q.get('end'));
-    if (Number.isNaN(end)) return false;
-    const name = (q.get('name') || '').trim() || 'Until ' + endLabel(end);
-    let t = custom.find(c => c.end === end && c.name === name); // the same link twice is the same timer
-    if (!t) {
-      t = { id: Date.now().toString(36), name, end };
-      custom.push(t);
-      store.set('timers', custom);
-    }
-    // drop the query so a reload doesn't override what's picked later
-    history.replaceState(null, '', location.pathname + location.hash);
-    selectTimer(t.id);
-    if (pipSupported) $('popBtn').classList.add('attn');
-    return true;
+  // ---------- the address: the timer on screen is always in the URL (HT-3) ----------
+  // ?timer=<id> for a timer kept in this browser; ?end=<ISO date-time>&name=<text> for a linked countdown (HT-1),
+  // which opens the same countdown anywhere. A bare address opens the timer used last here.
+  function urlFor(t) {
+    const q = new URLSearchParams();
+    if (t.end) { q.set('end', new Date(t.end).toISOString()); q.set('name', t.name); }
+    else q.set('timer', t.id);
+    return location.pathname + '?' + q + location.hash;
   }
+  function timerFromUrl() {
+    const q = new URLSearchParams(location.search);
+    const end = q.has('end') ? Date.parse(q.get('end')) : NaN;
+    if (!Number.isNaN(end)) {
+      const name = (q.get('name') || '').trim() || 'Until ' + endLabel(end);
+      let t = custom.find(c => c.end === end && c.name === name); // the same link twice is the same timer
+      if (!t) {
+        t = { id: Date.now().toString(36), name, end };
+        custom.push(t);
+        store.set('timers', custom);
+      }
+      return t;
+    }
+    if (q.has('timer')) return allTimers().find(t => t.id === q.get('timer')) || DEFAULT_TIMER;
+    return null;
+  }
+  // the app's own page history, for the header's back / forward: the timers shown in this tab, and where we are in them
+  const session = {
+    get(k, d) { try { const v = sessionStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+    set(k, v) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch {} }
+  };
+  let trail = [], pos = 0;
+  // how: 'push' adds a step to the history (a click), 'replace' keeps the step we are on (page load, back / forward)
+  function show(id, how) {
+    const t = allTimers().find(t => t.id === id) || DEFAULT_TIMER;
+    if (how === 'push') {
+      trail = trail.slice(0, pos + 1).concat(t.id);
+      pos = trail.length - 1;
+      history.pushState({ pos }, '', urlFor(t));
+    } else {
+      trail[pos] = t.id;
+      history.replaceState({ pos }, '', urlFor(t));
+    }
+    session.set('trail', trail);
+    selectTimer(t.id);
+  }
+  window.addEventListener('popstate', e => {
+    pos = e.state && Number.isInteger(e.state.pos) ? e.state.pos : 0;
+    show((timerFromUrl() || DEFAULT_TIMER).id, 'replace');
+  });
 
-  if (!openFromLink()) selectTimer(activeId);
+  // ---------- the pinned header: back / forward, breadcrumb, Go anywhere ----------
+  const nameOf = id => (allTimers().find(t => t.id === id) || DEFAULT_TIMER).name;
+  let crumbOpen = false;
+  function renderHeader() {
+    const back = $('backBtn'), fwd = $('fwdBtn');
+    back.disabled = pos <= 0;
+    back.title = back.disabled ? 'Nothing to go back to' : `Back to ${nameOf(trail[pos - 1])}`;
+    fwd.disabled = pos >= trail.length - 1;
+    fwd.title = fwd.disabled ? 'Nothing to go forward to' : `Forward to ${nameOf(trail[pos + 1])}`;
+    // Timers › <the timer>: the timer's part opens the other timers
+    const t = activeTimer(), box = $('crumbs');
+    const part = (text, last, menu) => {
+      const btn = el('button', { type: 'button', className: 'fk-crumb-btn' + (last ? ' fk-crumb-last' : ''), textContent: text, disabled: !menu, title: menu ? `${text}: jump to another timer` : text });
+      btn.dataset.testid = 'crumb-btn';
+      const sep = el('span', { className: 'fk-crumb-sep', textContent: '›' });
+      sep.setAttribute('aria-hidden', 'true');
+      const wrap = el('span', { className: 'fk-crumb' }, sep, btn);
+      wrap.dataset.testid = 'crumb';
+      if (menu) {
+        btn.setAttribute('aria-haspopup', 'menu');
+        btn.setAttribute('aria-expanded', crumbOpen);
+        btn.onclick = () => { crumbOpen = !crumbOpen; renderHeader(); };
+        if (crumbOpen) wrap.append(menu());
+      }
+      return wrap;
+    };
+    const menu = () => {
+      const m = el('span', { className: 'fk-crumb-menu' });
+      m.setAttribute('role', 'menu');
+      m.dataset.testid = 'crumb-menu';
+      allTimers().forEach(o => {
+        const on = o.id === t.id;
+        const it = el('button', { type: 'button', className: 'fk-crumb-item' + (on ? ' fk-crumb-item-on' : ''), textContent: o.name });
+        it.setAttribute('role', 'menuitem');
+        if (on) it.setAttribute('aria-current', 'true');
+        it.onclick = () => { crumbOpen = false; if (on) renderHeader(); else show(o.id, 'push'); };
+        m.append(it);
+      });
+      return m;
+    };
+    box.replaceChildren(part('Timers', false, null), part(t.name, true, menu));
+  }
+  const closeCrumb = () => { if (crumbOpen) { crumbOpen = false; renderHeader(); } };
+  document.addEventListener('pointerdown', e => { if (!e.target.closest('.fk-crumb')) closeCrumb(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCrumb(); });
+  $('backBtn').onclick = () => history.back();
+  $('fwdBtn').onclick = () => history.forward();
+  // the app has one place, and this is it
+  $('whereTimers').onclick = () => window.scrollTo({ top: 0 });
+
+  // "Go anywhere": Ctrl+K (⌘K) or the button; type a timer's name and Enter (or click) to jump
+  const goShade = $('goShade'), goInput = $('goInput'), goList = $('goList');
+  let goFound = [], goActive = 0;
+  function goRender() {
+    const words = goInput.value.toLowerCase().split(/\s+/).filter(Boolean);
+    goFound = allTimers().filter(t => { const hay = `${t.name} ${lengthOf(t)}`.toLowerCase(); return words.every(w => hay.includes(w)); });
+    goActive = Math.max(0, Math.min(goActive, goFound.length - 1));
+    goList.replaceChildren(...goFound.map((t, i) => {
+      const row = el('div', { className: 'fk-go-item' + (i === goActive ? ' fk-go-on' : '') },
+        el('span', { textContent: t.name }), el('span', { className: 'fk-muted', textContent: `Timer · ${lengthOf(t)}` }));
+      row.setAttribute('role', 'option');
+      row.setAttribute('aria-selected', i === goActive);
+      row.dataset.testid = 'go-item';
+      row.onmousemove = () => { if (goActive !== i) { goActive = i; goRender(); } };
+      row.onclick = () => goPick(i);
+      return row;
+    }));
+    if (!goFound.length) goList.append(el('div', { className: 'fk-go-none fk-muted', textContent: `No timer is called "${goInput.value}"` }));
+  }
+  function goOpen() { goShade.hidden = false; goInput.value = ''; goActive = 0; goRender(); goInput.focus(); }
+  function goClose() { goShade.hidden = true; }
+  function goPick(i) {
+    const t = goFound[i];
+    if (!t) return;
+    goClose();
+    if (t.id !== activeId) show(t.id, 'push');
+  }
+  $('goBtn').onclick = goOpen;
+  goShade.addEventListener('pointerdown', e => { if (e.target === goShade) goClose(); });
+  goInput.addEventListener('input', () => { goActive = 0; goRender(); });
+  goInput.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); goActive++; goRender(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); goActive--; goRender(); }
+    else if (e.key === 'Enter') { e.preventDefault(); goPick(goActive); }
+    else if (e.key === 'Escape') { e.preventDefault(); goClose(); }
+  });
+  window.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); goOpen(); } });
+
+  // ---------- first screen: the timer in the address, or the one used last ----------
+  {
+    const st = history.state, saved = session.get('trail', null);
+    const sameVisit = st && Number.isInteger(st.pos) && Array.isArray(saved) && st.pos < saved.length; // a reload, or back to this page
+    if (sameVisit) { trail = saved; pos = st.pos; }
+    const linked = new URLSearchParams(location.search).has('end');
+    const t = timerFromUrl() || activeTimer();
+    show(t.id, 'replace');
+    // arriving from a link: the pop-out needs one click, so point at it
+    if (!sameVisit && linked && t.end && pipSupported) $('popBtn').classList.add('attn');
+  }
   // while paused or idle, keep the projected end time moving with the clock
   setInterval(() => { if (state === 'idle' || state === 'paused') render(); }, 1000);
 })();
