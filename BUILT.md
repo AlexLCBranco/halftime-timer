@@ -2,6 +2,10 @@
 
 Shipped work only, newest first (rules: CLAUDE.md, "Feature backlog, built list and ideas").
 
+## 2026-11-24
+### Internal
+- docs: new "Blocked" rule in CLAUDE.md: a Blocked line that only waits for other items unblocks itself at the next build; a question needs a "?" and still waits for the owner
+
 ## 2026-11-21
 
 - HT-3 — Shared layout: pinned header menu, chips instead of dropdowns (v1.1.0)
